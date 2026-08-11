@@ -1,0 +1,38 @@
+name: tessera
+description: >
+  TESSERA — модульный планировщик времени.
+  Все модули (встроенные и пользовательские) — Lua-скрипты,
+  исполняются одним и тем же движком.
+  © susi.su, All Rights Reserved.
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  # ВЫБОР LUA-БИНДИНГА ЕЩЁ НЕ СДЕЛАН.
+  # Прототип на день: попробовать lua_dardo (чистый Dart, проще собрать)
+  # и, если не хватит производительности/фич — FFI к lua.c.
+  # Пока стаб — раскомментировать после решения:
+  # lua_dardo: ^0.4.0
+  drift: ^2.19.0          # SQLite-обёртка для storage.*
+  sqlite3_flutter_libs: ^0.5.24
+  path_provider: ^2.1.4
+  flutter_local_notifications: ^17.2.3
+  timezone: ^0.9.4
+  lua_dardo: ^0.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  drift_dev: ^2.19.0
+  build_runner: ^2.4.13
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/modules/
