@@ -19,7 +19,9 @@ lib/
     lua_state.dart       — абстракция над Lua-интерпретатором (реализация на `lua_dardo`, работает)
     bridge_functions.dart — Bridge-функции: time.*, event.*, ui.* (text/column/row/button/input),
                              notify.show (пока эмулируется через EventBus → SnackBar),
-                             storage.get/set/delete (работает в памяти процесса, не SQLite)
+                             storage.get/set/delete (работает через SQLite (drift) с in-memory кэшем
+                             для синхронных операций из Lua; фоновые записи выполняются периодически
+                             и при lifecycle-flush)
   event/
     event_bus.dart        — шина событий приложения
   loader/
@@ -28,7 +30,9 @@ lib/
     module_instance.dart  — обёртка над загруженным модулем
   renderer/
     element_renderer.dart — UI-дерево из Lua → Flutter-виджеты (text/column/row/button/input),
-                             вызов Lua-колбэков по onTap/onChanged через callLua
+                             вызов Lua-колбэков по onTap/onChanged через callLua.
+                             `ui.input` теперь кэширует `TextEditingController` по элементу,
+                             чтобы позиция курсора не терялась при перерисовке.
   ui/
     home_screen.dart      — список модулей, системный тик раз в секунду, обработка notify.show
   main.dart
@@ -49,25 +53,7 @@ docs/
   FUTURE.md                  — сводка всех отложенных решений и почему они отложены
 ```
 
-## Что нужно сделать первым делом (день 1 плана)
-
-1. Прототип на отдельной ветке: попробовать `lua_dardo` (`flutter pub add lua_dardo`)
-   и, если не зайдёт, FFI-биндинг к `lua.c`. Взять решение — реализовать
-   `lua_state.dart` под него. Всё остальное трогать не придётся.
-2. После этого — `flutter pub get`, `flutter run`, смотреть, действительно
-   ли `clock.lua` рисует часы на экране. Скорее всего конвенция передачи
-   `module = M` в глобальную область и то, как именно `getGlobal`/`callField`
-   работают с конкретным биндингом — потребуют правки под реальный API
-   выбранной библиотеки (сигнатуры в `lua_state.dart` — предположение,
-   не проверенный контракт).
-
 ## Осознанно не сделано в этом скелете
-
-- `storage.get/set/delete` реально работают, но пишут в `Map` в памяти
-  процесса, а не в SQLite — состояние Таймера/Секундомера теряется
-  при перезапуске приложения. Заменить на drift, когда дойдёт очередь
-  по плану (см. презентацию, неделя 3, день 11) — сигнатуры функций,
-  видимые из Lua, при этом не изменятся.
 - `notify.show` не показывает системное push-уведомление — эмулируется
   через `EventBus` → `SnackBar` в `HomeScreen`, чтобы можно было проверять
   логику модулей уже сейчас, до подключения `flutter_local_notifications`.

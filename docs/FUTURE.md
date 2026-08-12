@@ -8,9 +8,6 @@
 
 ## Ближайшее (внутри плана на 2 месяца, просто ещё не сделано)
 
-- **SQLite вместо in-memory storage.** `storage.get/set/delete`
-  уже вызываются модулями правильно (`stopwatch.lua`, `timer.lua`),
-  реализация на Dart-стороне — временная `Map`.
 - **Настоящие push-уведомления.** `notify.show` сейчас — `SnackBar`
   через `EventBus`, не `flutter_local_notifications`.
 - **Настоящие push-уведомления.** `notify.show` сейчас — `SnackBar`
