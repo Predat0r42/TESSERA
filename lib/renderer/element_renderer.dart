@@ -12,9 +12,13 @@ typedef LuaCallback = void Function(dynamic luaFunctionRef, [List<dynamic> args]
 class ElementRenderer {
   final LuaCallback callLua;
 
+  // Cache TextEditingControllers so input fields preserve cursor/selection
+  // and avoid being recreated on each render.
+  final Map<String, TextEditingController> _controllers = {};
+
   ElementRenderer({required this.callLua});
 
-  Widget render(dynamic element) {
+  Widget render(dynamic element, {String moduleId = '', String path = '0'}) {
     if (element is! Map) return const SizedBox.shrink();
 
     switch (element['type']) {
@@ -26,7 +30,9 @@ class ElementRenderer {
 
       case 'column':
         final children = (element['children'] as List? ?? [])
-            .map(render)
+            .asMap()
+            .entries
+            .map((e) => render(e.value, moduleId: moduleId, path: '$path.c${e.key}'))
             .toList();
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -36,7 +42,9 @@ class ElementRenderer {
 
       case 'row':
         final children = (element['children'] as List? ?? [])
-            .map(render)
+            .asMap()
+            .entries
+            .map((e) => render(e.value, moduleId: moduleId, path: '$path.r${e.key}'))
             .toList();
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -56,8 +64,14 @@ class ElementRenderer {
 
       case 'input':
         final inputType = element['inputType'] as String? ?? 'text';
-        final controller =
-            TextEditingController(text: element['value']?.toString() ?? '');
+        final text = element['value']?.toString() ?? '';
+        final key = '${moduleId.isNotEmpty ? moduleId : 'global'}:$path';
+        final controller = _controllers.putIfAbsent(key, () => TextEditingController(text: text));
+        // Update controller text only when it actually differs to avoid
+        // resetting cursor/selection on each render.
+        if (controller.text != text) {
+          controller.text = text;
+        }
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: TextField(

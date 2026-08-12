@@ -13,9 +13,24 @@
 local M = {}
 
 function M.init()
-    M.input_minutes = 5
-    M.remaining_seconds = 0
-    M.running = false
+    -- Restore persisted values if available. We don't attempt to compute
+    -- elapsed time while the app was closed — that would require wall-clock
+    -- based scheduling. For now restore last user input and stored remaining
+    -- seconds/running flag, but keep running=false to avoid background catch-up.
+    if storage and storage.get then
+        local im = storage.get('input_minutes')
+        if im ~= nil then M.input_minutes = im else M.input_minutes = 5 end
+        local rs = storage.get('remaining_seconds')
+        if rs ~= nil then M.remaining_seconds = rs else M.remaining_seconds = 0 end
+        local run = storage.get('running')
+        if run ~= nil then M.running = run else M.running = false end
+        -- For safety, do not resume running automatically; require user to start.
+        M.running = false
+    else
+        M.input_minutes = 5
+        M.remaining_seconds = 0
+        M.running = false
+    end
 end
 
 function M.format(total_seconds)
@@ -29,10 +44,16 @@ end
 function M.onTick()
     if not M.running then return end
     M.remaining_seconds = M.remaining_seconds - 1
+    if storage and storage.set then
+        storage.set('remaining_seconds', M.remaining_seconds)
+    end
     if M.remaining_seconds <= 0 then
         M.running = false
         event.off("time.tick", M.onTick)
         notify.show("Таймер", "Время вышло")
+        if storage and storage.set then
+            storage.set('running', false)
+        end
     end
 end
 
@@ -41,16 +62,26 @@ function M.onStart()
     M.remaining_seconds = M.input_minutes * 60
     M.running = true
     event.on("time.tick", M.onTick)
+    if storage and storage.set then
+        storage.set('remaining_seconds', M.remaining_seconds)
+        storage.set('running', true)
+    end
 end
 
 function M.onStop()
     M.running = false
     event.off("time.tick", M.onTick)
+    if storage and storage.set then
+        storage.set('running', false)
+    end
 end
 
 function M.onInputChange(val)
     if val ~= nil then
         M.input_minutes = val
+        if storage and storage.set then
+            storage.set('input_minutes', M.input_minutes)
+        end
     end
 end
 

@@ -18,18 +18,19 @@ dependencies:
   # и, если не хватит производительности/фич — FFI к lua.c.
   # Пока стаб — раскомментировать после решения:
   # lua_dardo: ^0.4.0
-  drift: ^2.19.0          # SQLite-обёртка для storage.*
-  sqlite3_flutter_libs: ^0.5.24
-  path_provider: ^2.1.4
+  drift: ^2.34.3          # SQLite-обёртка для storage.*
+  sqlite3_flutter_libs: ^0.6.0+eol
+  path_provider: ^2.1.6
   flutter_local_notifications: ^17.2.3
   timezone: ^0.9.4
   lua_dardo: ^0.0.5
+  sqlite3: ^3.5.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  drift_dev: ^2.19.0
-  build_runner: ^2.4.13
+  drift_dev: ^2.34.5
+  build_runner: ^2.15.1
   flutter_lints: ^6.0.0
 
 flutter:

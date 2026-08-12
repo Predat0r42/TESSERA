@@ -37,6 +37,9 @@ class ModuleLoader {
 
     // init(), если модуль его определяет.
     try {
+      // Ensure storage cache for this module is loaded before calling init,
+      // so module code sees persisted values synchronously.
+      await loadModuleStorageCache(id);
       lua.callField(moduleTable, 'init');
     } catch (_) {
       // init необязателен — модуль вроде "Часов" может обойтись без него.

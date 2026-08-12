@@ -1,4 +1,8 @@
 import 'package:lua_dardo/lua.dart' as dardo;
+import 'package:flutter/foundation.dart';
+
+// Enable verbose Lua debug output only when debugging and this flag is true.
+const bool kVerboseLuaDebug = false;
 
 /// Обёртка над конкретной Lua-реализацией.
 ///
@@ -308,10 +312,11 @@ class DardoLuaState implements LuaState {
       // Debug trace: if recursion depth gets large, print a marker.
       if (depthCounter % 1000 == 0) {
         // ignore: avoid leaving heavy logging in production; temporary for debug
-        // Print pointer and partial path info
         final p = ls.toPointer(absIndex);
-        // ignore: avoid printing potentially large structures
-        print('[lua-debug] table depth=$depthCounter ptr=${p?.hashCode} key=${ls.toStr(-2)}');
+        if (kDebugMode && kVerboseLuaDebug) {
+          // ignore: avoid_print
+          print('[lua-debug] table depth=$depthCounter ptr=${p?.hashCode} key=${ls.toStr(-2)}');
+        }
       }
       ls.pop(1);
       depthCounter++;
@@ -330,13 +335,19 @@ class DardoLuaState implements LuaState {
     final shouldLog = map.containsKey('type') || (!isContiguousArray && (map.isNotEmpty || intMap.isNotEmpty));
     if (shouldLog) {
       try {
-        print('[lua-debug] table keys stringKeys=${map.keys.toList()} intKeys=${intMap.keys.toList()} maxIndex=$maxIndex isContiguousArray=$isContiguousArray');
+        if (kDebugMode && kVerboseLuaDebug) {
+          // ignore: avoid_print
+          print('[lua-debug] table keys stringKeys=${map.keys.toList()} intKeys=${intMap.keys.toList()} maxIndex=$maxIndex isContiguousArray=$isContiguousArray');
+        }
       } catch (_) {}
     }
 
     if (map['type'] == 'button') {
       try {
-        print('[lua-debug] ui.button table onTap=${map['onTap']} keys=${map.keys.toList()} intKeys=${intMap.keys.toList()}');
+        if (kDebugMode && kVerboseLuaDebug) {
+          // ignore: avoid_print
+          print('[lua-debug] ui.button table onTap=${map['onTap']} keys=${map.keys.toList()} intKeys=${intMap.keys.toList()}');
+        }
       } catch (_) {}
     }
 

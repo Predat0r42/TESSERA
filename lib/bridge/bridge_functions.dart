@@ -1,5 +1,18 @@
 import '../event/event_bus.dart';
 import 'lua_state.dart';
+import '../storage/module_storage.dart';
+
+final AppDatabase _appDb = AppDatabase();
+// Track pending background DB operations so we can flush them on exit.
+final Set<Future<void>> _pendingDbWrites = <Future<void>>{};
+
+/// Ensure in-memory cache for [moduleId] is populated from SQLite.
+Future<void> loadModuleStorageCache(String moduleId) async {
+  final entries = await _appDb.getAllForModule(moduleId);
+  entries.forEach((k, v) {
+    _memoryStorage['$moduleId:$k'] = v;
+  });
+}
 
 /// Регистрирует минимальный набор функций, нужный первым модулям
 /// (Часы, Секундомер). Остальные (notify.*, storage.*, ui.input и т.д.)
@@ -92,13 +105,44 @@ void registerBridge(LuaState lua, String moduleId) {
   lua.registerFunction('storage', 'set', (args) {
     final key = args[0] as String;
     final value = args[1];
+    // Update in-memory cache synchronously so Lua sees the new value immediately.
     _memoryStorage['$moduleId:$key'] = value;
+    // Persist in background to SQLite; do not block Lua, but track the future.
+    try {
+      // ignore: avoid_print
+      print('[db-debug] scheduling setValue $moduleId:$key');
+    } catch (_) {}
+    late Future<void> f;
+    f = _appDb.setValue(moduleId, key, value).whenComplete(() {
+      _pendingDbWrites.remove(f);
+      try {
+        // ignore: avoid_print
+        print('[db-debug] completed setValue $moduleId:$key');
+      } catch (_) {}
+    });
+    _pendingDbWrites.add(f);
   });
 
   lua.registerFunction('storage', 'delete', (args) {
     final key = args[0] as String;
     _memoryStorage.remove('$moduleId:$key');
+    try {
+      // ignore: avoid_print
+      print('[db-debug] scheduling deleteValue $moduleId:$key');
+    } catch (_) {}
+    late Future<void> f;
+    f = _appDb.deleteValue(moduleId, key).whenComplete(() {
+      _pendingDbWrites.remove(f);
+      try {
+        // ignore: avoid_print
+        print('[db-debug] completed deleteValue $moduleId:$key');
+      } catch (_) {}
+    });
+    _pendingDbWrites.add(f);
   });
+
+  // Expose a flush helper (can be awaited by the app on shutdown).
+  // Not registered in Lua; call from Dart when needed.
 
   // TODO: schedule.after / schedule.at, http.* —
   // добавлять по одному, когда за ними приходит конкретный модуль.
@@ -109,3 +153,6 @@ void registerBridge(LuaState lua, String moduleId) {
 /// достаточно поменять реализацию этих трёх функций, вызовы из Lua
 /// не изменятся.
 final Map<String, dynamic> _memoryStorage = {};
+
+/// Wait for any pending background DB writes started by `storage.set`/`delete`.
+Future<void> flushPendingWrites() => Future.wait(_pendingDbWrites.toList());

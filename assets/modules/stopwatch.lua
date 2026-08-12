@@ -1,13 +1,23 @@
+
 -- modules/stopwatch.lua
 -- TESSERA · встроенный модуль
--- Секундомер: старт / стоп / сброс. Состояние живёт только в памяти
--- (не пишется в storage) — если модуль перезагрузить, счёт обнулится.
--- Это осознанное упрощение первой версии, не баг.
+-- Секундомер: старт / стоп / сброс. (Ранее состояние хранилось только в памяти;
+-- теперь модуль сохраняет текущее значение в `storage`.)
 
 local M = {}
 
 function M.init()
-    M.seconds = 0
+    -- Restore persisted seconds (if any) so the stopwatch survives reloads.
+    if storage and storage.get then
+        local saved = storage.get('seconds')
+        if saved ~= nil then
+            M.seconds = saved
+        else
+            M.seconds = 0
+        end
+    else
+        M.seconds = 0
+    end
     M.running = false
 end
 
@@ -22,6 +32,9 @@ end
 function M.onTick()
     if M.running then
         M.seconds = M.seconds + 1
+        if storage and storage.set then
+            storage.set('seconds', M.seconds)
+        end
     end
 end
 
@@ -31,6 +44,11 @@ function M.onStart()
     -- Подписываемся на тик только на время работы — не копим лишние
     -- подписки, если пользователь много раз жмёт старт/стоп.
     event.on("time.tick", M.onTick)
+    -- Для тестирования: сохраняем время старта в storage, чтобы
+    -- проверить, что фоновые записи в SQLite действительно выполняются.
+    if storage and storage.set then
+        storage.set('last_started', time.now())
+    end
 end
 
 function M.onStop()
@@ -40,6 +58,9 @@ end
 
 function M.onReset()
     M.seconds = 0
+    if storage and storage.set then
+        storage.set('seconds', 0)
+    end
 end
 
 function M.ui()
